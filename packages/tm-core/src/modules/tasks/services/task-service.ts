@@ -295,8 +295,53 @@ export class TaskService {
 	/**
 	 * Get next available task to work on
 	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
+	 *
+	 * **Skip behavior:**
+	 * - `skipCount = 0` or `undefined`: Returns first eligible task (default behavior)
+	 * - `skipCount = 1`: Returns second eligible task
+	 * - `skipCount = N`: Returns (N+1)th eligible task
+	 * - `skipCount >= eligibleTasks.length`: Returns `null` (no task at that index)
+	 *
+	 * Skip indexing applies to the sorted eligible tasks array after all filtering,
+	 * priority sorting, and dependency resolution. The skip is applied separately:
+	 * 1. First to eligible subtasks from in-progress parents (if any exist)
+	 * 2. If skip exceeds available subtasks, falls through to top-level tasks
+	 * 3. Returns null if skip exceeds both subtasks and top-level tasks
+	 *
+	 * @param tag - Optional tag to filter tasks
+	 * @param skipCount - Optional number of eligible tasks to skip (0-indexed, non-negative integer)
+	 * @returns The next available task at the specified index, or null if no eligible task exists
+	 * @throws {TaskMasterError} If skipCount is not a non-negative integer
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get first eligible task (default)
+	 * const task1 = await taskService.getNextTask();
+	 *
+	 * // Get second eligible task
+	 * const task2 = await taskService.getNextTask(undefined, 1);
+	 *
+	 * // Get fifth eligible task for a specific tag
+	 * const task5 = await taskService.getNextTask('my-tag', 4);
+	 * ```
 	 */
-	async getNextTask(tag?: string): Promise<Task | null> {
+	async getNextTask(tag?: string, skipCount?: number): Promise<Task | null> {
+		// Normalize skipCount - default to 0 (return first task) if not provided
+		const skip = skipCount ?? 0;
+
+		// Validate skipCount - must be a non-negative number
+		if (typeof skip !== 'number' || skip < 0 || !Number.isInteger(skip)) {
+			throw new TaskMasterError(
+				'Invalid skipCount parameter: must be a non-negative integer',
+				ERROR_CODES.VALIDATION_ERROR,
+				{
+					parameter: 'skipCount',
+					provided: skip,
+					expected: 'non-negative integer'
+				}
+			);
+		}
+
 		const result = await this.getTaskList({
 			tag,
 			filter: {
@@ -387,7 +432,11 @@ export class TaskService {
 				return aSub - bSub;
 			});
 
-			return candidateSubtasks[0];
+			// Apply skip indexing - return task at specified index, or null if out of bounds
+			if (skip < candidateSubtasks.length) {
+				return candidateSubtasks[skip];
+			}
+			// Skip count exceeds available subtasks - fall through to top-level tasks
 		}
 
 		// 2) Fall back to top-level tasks (original logic)
@@ -402,7 +451,7 @@ export class TaskService {
 		if (eligibleTasks.length === 0) return null;
 
 		// Sort by priority → dependency count → task ID
-		const nextTask = eligibleTasks.sort((a, b) => {
+		eligibleTasks.sort((a, b) => {
 			const pa = priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
 			const pb = priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
 			if (pb !== pa) return pb - pa;
@@ -412,9 +461,15 @@ export class TaskService {
 			if (da !== db) return da - db;
 
 			return Number(a.id) - Number(b.id);
-		})[0];
+		});
 
-		return nextTask;
+		// Apply skip indexing - return task at specified index, or null if out of bounds
+		if (skip < eligibleTasks.length) {
+			return eligibleTasks[skip];
+		}
+
+		// Skip count exceeds available eligible tasks
+		return null;
 	}
 
 	/**
