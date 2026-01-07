@@ -338,14 +338,12 @@ describe('next command', () => {
 			expect(output).toContain('non-negative integer');
 		});
 
-		it('should handle non-numeric skip values (Commander.js validation)', () => {
-			// Commander.js handles non-numeric values before our custom validation
-			// This test documents the current behavior
-			const { output } = runNext('--skip abc');
+		it('should throw a descriptive error for non-numeric skip values', () => {
+			const { output, exitCode } = runNext('--skip abc');
 
-			// Commander.js may reject or accept this depending on version
-			// The important thing is that it doesn't crash
-			expect(output).toBeDefined();
+			expect(exitCode).toBe(1);
+			expect(output).toContain('Invalid skip count');
+			expect(output).toContain('non-negative integer');
 		});
 
 		it('should handle decimal skip values', () => {
@@ -358,7 +356,7 @@ describe('next command', () => {
 	});
 
 	describe('--skip parameter functionality', () => {
-		it('should skip the specified number of eligible tasks', () => {
+		beforeEach(() => {
 			const testData = createTasksFile({
 				tasks: [
 					createTask({ id: 1, title: 'First Task', status: 'pending' }),
@@ -367,33 +365,21 @@ describe('next command', () => {
 				]
 			});
 			writeTasks(testData);
-
-			const { output: firstOutput } = runNext();
-			const firstTaskId = firstOutput.match(/Next Task: #(\d+)/)?.[1];
-
-			const { output: secondOutput } = runNext('--skip 1');
-			const secondTaskId = secondOutput.match(/Next Task: #(\d+)/)?.[1];
-
-			// The task returned with --skip 1 should be different from the first task
-			expect(firstTaskId).toBeDefined();
-			expect(secondTaskId).toBeDefined();
-			expect(secondTaskId).not.toBe(firstTaskId);
 		});
 
-		it('should skip multiple tasks when specified', () => {
-			const testData = createTasksFile({
-				tasks: [
-					createTask({ id: 1, title: 'Task One', status: 'pending' }),
-					createTask({ id: 2, title: 'Task Two', status: 'pending' }),
-					createTask({ id: 3, title: 'Task Three', status: 'pending' })
-				]
-			});
-			writeTasks(testData);
+		it('should return the first task when no skip is provided', () => {
+			const { output } = runNext();
+			expect(output).toContain('Next Task: #1');
+		});
 
+		it('should skip one task and return the second task', () => {
+			const { output } = runNext('--skip 1');
+			expect(output).toContain('Next Task: #2');
+		});
+
+		it('should skip two tasks and return the third task', () => {
 			const { output } = runNext('--skip 2');
-
-			expect(output).toContain('Task');
-			// Should return one of the tasks (implementation decides which)
+			expect(output).toContain('Next Task: #3');
 		});
 	});
 });
