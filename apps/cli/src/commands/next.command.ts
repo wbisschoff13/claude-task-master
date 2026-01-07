@@ -23,7 +23,7 @@ export interface NextCommandOptions {
 	silent?: boolean;
 	project?: string;
 	/** Number of eligible tasks to skip before returning (useful for parallel workflows) */
-	skip?: number;
+	skip?: number | string;
 }
 
 /**
@@ -108,8 +108,12 @@ export class NextCommand extends Command {
 		}
 
 		// Validate skip count
-		if (options.skip !== undefined && (!Number.isInteger(options.skip) || options.skip < 0)) {
-			throw new Error(`Invalid skip count: ${options.skip}. Skip count must be a non-negative integer`);
+		if (options.skip !== undefined) {
+			const numericSkip = Number(options.skip);
+			if (!Number.isInteger(numericSkip) || numericSkip < 0) {
+				throw new Error(`Invalid skip count: ${options.skip}. Skip count must be a non-negative integer`);
+			}
+			options.skip = numericSkip;
 		}
 	}
 
@@ -134,7 +138,11 @@ export class NextCommand extends Command {
 		}
 
 		// Call tm-core to get next task, passing skip parameter
-		const task = await this.tmCore.tasks.getNext(options.tag, options.skip);
+		// options.skip is guaranteed to be a number after validation
+		const task = await this.tmCore.tasks.getNext(
+			options.tag,
+			options.skip !== undefined ? (options.skip as number) : undefined
+		);
 
 		// Get storage type and active tag
 		const storageType = this.tmCore.tasks.getStorageType();
