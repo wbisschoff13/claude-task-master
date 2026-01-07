@@ -327,7 +327,7 @@ export class TaskService {
 	 */
 	async getNextTask(tag?: string, skipCount?: number): Promise<Task | null> {
 		// Normalize skipCount - default to 0 (return first task) if not provided
-		const skip = skipCount ?? 0;
+		let skip = skipCount ?? 0;
 
 		// Validate skipCount - must be a non-negative number
 		if (typeof skip !== 'number' || skip < 0 || !Number.isInteger(skip)) {
@@ -436,7 +436,8 @@ export class TaskService {
 			if (skip < candidateSubtasks.length) {
 				return candidateSubtasks[skip];
 			}
-			// Skip count exceeds available subtasks - fall through to top-level tasks
+			// Adjust skip count for the next stage since we've skipped all available subtasks
+			skip -= candidateSubtasks.length;
 		}
 
 		// 2) Fall back to top-level tasks (original logic)
