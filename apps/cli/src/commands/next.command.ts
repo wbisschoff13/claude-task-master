@@ -22,6 +22,8 @@ export interface NextCommandOptions {
 	format?: 'text' | 'json';
 	silent?: boolean;
 	project?: string;
+	/** Number of eligible tasks to skip before returning (useful for parallel workflows) */
+	skip?: number | string;
 }
 
 /**
@@ -51,10 +53,8 @@ export class NextCommand extends Command {
 			.option('-t, --tag <tag>', 'Filter by tag')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option(
-				'-p, --project <path>',
-				'Project root directory (auto-detected if not provided)'
-			)
+			.option('-p, --project <path>', 'Project root directory (auto-detected if not provided)')
+			.option('--skip <count>', 'Number of eligible tasks to skip before returning')
 			.action(async (options: NextCommandOptions) => {
 				await this.executeCommand(options);
 			});
@@ -106,6 +106,15 @@ export class NextCommand extends Command {
 				`Invalid format: ${options.format}. Valid formats are: text, json`
 			);
 		}
+
+		// Validate skip count
+		if (options.skip !== undefined) {
+			const numericSkip = Number(options.skip);
+			if (!Number.isInteger(numericSkip) || numericSkip < 0) {
+				throw new Error(`Invalid skip count: ${options.skip}. Skip count must be a non-negative integer`);
+			}
+			options.skip = numericSkip;
+		}
 	}
 
 	/**
@@ -128,8 +137,12 @@ export class NextCommand extends Command {
 			throw new Error('TmCore not initialized');
 		}
 
-		// Call tm-core to get next task
-		const task = await this.tmCore.tasks.getNext(options.tag);
+		// Call tm-core to get next task, passing skip parameter
+		// options.skip is guaranteed to be a number after validation
+		const task = await this.tmCore.tasks.getNext(
+			options.tag,
+			options.skip !== undefined ? (options.skip as number) : undefined
+		);
 
 		// Get storage type and active tag
 		const storageType = this.tmCore.tasks.getStorageType();
