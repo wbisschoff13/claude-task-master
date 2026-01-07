@@ -61,9 +61,9 @@ describe('next command', () => {
 		fs.writeFileSync(tasksPath, JSON.stringify(tasksData, null, 2));
 	};
 
-	const runNext = (): { output: string; exitCode: number } => {
+	const runNext = (args = ''): { output: string; exitCode: number } => {
 		try {
-			const output = execSync(`node "${binPath}" next`, {
+			const output = execSync(`node "${binPath}" next ${args}`, {
 				encoding: 'utf-8',
 				stdio: 'pipe',
 				env: { ...process.env, TASKMASTER_SKIP_AUTO_UPDATE: '1' }
@@ -286,5 +286,100 @@ describe('next command', () => {
 		const hasReadyB = output.includes('Ready Task B');
 		const hasReadyC = output.includes('Ready Task C');
 		expect(hasReadyA || hasReadyB || hasReadyC).toBe(true);
+	});
+
+	describe('--skip parameter validation', () => {
+		beforeEach(() => {
+			// Create a set of pending tasks for skip testing
+			const testData = createTasksFile({
+				tasks: [
+					createTask({ id: 1, title: 'Task 1', status: 'pending' }),
+					createTask({ id: 2, title: 'Task 2', status: 'pending' }),
+					createTask({ id: 3, title: 'Task 3', status: 'pending' })
+				]
+			});
+			writeTasks(testData);
+		});
+
+		it('should pass validation for skip=0', () => {
+			const { output, exitCode } = runNext('--skip 0');
+
+			expect(exitCode).toBe(0);
+			expect(output).toContain('Task');
+		});
+
+		it('should pass validation for positive skip values', () => {
+			const { output, exitCode } = runNext('--skip 1');
+
+			expect(exitCode).toBe(0);
+			expect(output).toContain('Task');
+		});
+
+		it('should pass validation when skip parameter is not provided', () => {
+			const { output, exitCode } = runNext();
+
+			expect(exitCode).toBe(0);
+			expect(output).toContain('Task');
+		});
+
+		it('should throw descriptive error for negative skip values', () => {
+			const { output, exitCode } = runNext('--skip -1');
+
+			expect(exitCode).toBe(1);
+			expect(output).toContain('Invalid skip count');
+			expect(output).toContain('non-negative integer');
+		});
+
+		it('should throw descriptive error for large negative skip values', () => {
+			const { output, exitCode } = runNext('--skip -999');
+
+			expect(exitCode).toBe(1);
+			expect(output).toContain('Invalid skip count');
+			expect(output).toContain('non-negative integer');
+		});
+
+		it('should throw a descriptive error for non-numeric skip values', () => {
+			const { output, exitCode } = runNext('--skip abc');
+
+			expect(exitCode).toBe(1);
+			expect(output).toContain('Invalid skip count');
+			expect(output).toContain('non-negative integer');
+		});
+
+		it('should handle decimal skip values', () => {
+			const { output, exitCode } = runNext('--skip 1.5');
+
+			expect(exitCode).toBe(1);
+			expect(output).toContain('Invalid skip count');
+			expect(output).toContain('non-negative integer');
+		});
+	});
+
+	describe('--skip parameter functionality', () => {
+		beforeEach(() => {
+			const testData = createTasksFile({
+				tasks: [
+					createTask({ id: 1, title: 'First Task', status: 'pending' }),
+					createTask({ id: 2, title: 'Second Task', status: 'pending' }),
+					createTask({ id: 3, title: 'Third Task', status: 'pending' })
+				]
+			});
+			writeTasks(testData);
+		});
+
+		it('should return the first task when no skip is provided', () => {
+			const { output } = runNext();
+			expect(output).toContain('Next Task: #1');
+		});
+
+		it('should skip one task and return the second task', () => {
+			const { output } = runNext('--skip 1');
+			expect(output).toContain('Next Task: #2');
+		});
+
+		it('should skip two tasks and return the third task', () => {
+			const { output } = runNext('--skip 2');
+			expect(output).toContain('Next Task: #3');
+		});
 	});
 });
