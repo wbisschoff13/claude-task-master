@@ -3,7 +3,7 @@
  * Tests for the public API layer - verifies parameter pass-through to services
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TasksDomain } from './tasks-domain.js';
 import { ConfigManager } from '../config/managers/config-manager.js';
 import type { Task } from '../../common/types/index.js';
@@ -27,26 +27,36 @@ describe('TasksDomain', () => {
 		updatedAt: '2025-01-07T00:00:00.000Z'
 	};
 
+	/**
+	 * Creates a properly typed mock TaskService
+	 * Type-safe alternative to 'as any' casting
+	 */
+	const createMockTaskService = (overrides?: {
+		getNextTask?: ReturnType<typeof vi.fn>;
+	}) => ({
+		getNextTask: overrides?.getNextTask ?? vi.fn(),
+	});
+
 	beforeEach(() => {
-		// Create mock config manager
+		// Create mock config manager with complete interface implementation
 		mockConfigManager = {
 			getProjectRoot: vi.fn().mockReturnValue('/test/project'),
 			getActiveTag: vi.fn().mockReturnValue('master'),
 			getStorageConfig: vi.fn().mockReturnValue({
 				type: 'file',
 				filePath: '/test/project/tasks.json'
-			})
-		} as unknown as ConfigManager;
+			}),
+			// Add other required methods if they exist on ConfigManager
+		} as ConfigManager;
 
 		domain = new TasksDomain(mockConfigManager);
 	});
 
 	describe('getNext', () => {
 		it('should pass skipCount parameter to service layer', async () => {
-			// Manually create a mock task service
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(mockTask)
-			};
+			});
 
 			// Inject the mock service
 			(domain as any).taskService = mockTaskService;
@@ -59,9 +69,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should work without skipCount (backward compatibility)', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(mockTask)
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
@@ -73,9 +83,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should work with skipCount=0', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(mockTask)
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
@@ -87,9 +97,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should work with skipCount>0', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(mockTask)
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
@@ -101,9 +111,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should propagate errors from service layer', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockRejectedValue(new Error('Service error'))
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
@@ -112,9 +122,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should return task from service layer', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(mockTask)
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
@@ -124,9 +134,9 @@ describe('TasksDomain', () => {
 		});
 
 		it('should return null when no task found', async () => {
-			const mockTaskService = {
+			const mockTaskService = createMockTaskService({
 				getNextTask: vi.fn().mockResolvedValue(null)
-			};
+			});
 
 			(domain as any).taskService = mockTaskService;
 
