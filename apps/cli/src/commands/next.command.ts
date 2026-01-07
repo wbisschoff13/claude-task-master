@@ -4,7 +4,13 @@
  */
 
 import path from 'node:path';
-import { type Task, type TmCore, createTmCore } from '@tm/core';
+import {
+	TaskMasterError,
+	ERROR_CODES,
+	type Task,
+	type TmCore,
+	createTmCore
+} from '@tm/core';
 import type { StorageType } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -102,8 +108,9 @@ export class NextCommand extends Command {
 	private validateOptions(options: NextCommandOptions): void {
 		// Validate format
 		if (options.format && !['text', 'json'].includes(options.format)) {
-			throw new Error(
-				`Invalid format: ${options.format}. Valid formats are: text, json`
+			throw new TaskMasterError(
+				`Invalid format: "${options.format}". Valid formats are: text, json`,
+				ERROR_CODES.VALIDATION_ERROR
 			);
 		}
 
@@ -111,7 +118,10 @@ export class NextCommand extends Command {
 		if (options.skip !== undefined) {
 			const numericSkip = Number(options.skip);
 			if (!Number.isInteger(numericSkip) || numericSkip < 0) {
-				throw new Error(`Invalid skip count: ${options.skip}. Skip count must be a non-negative integer`);
+				throw new TaskMasterError(
+					`Invalid skip count: "${options.skip}". Must be a non-negative integer (0, 1, 2, ...)`,
+					ERROR_CODES.VALIDATION_ERROR
+				);
 			}
 			options.skip = numericSkip;
 		}

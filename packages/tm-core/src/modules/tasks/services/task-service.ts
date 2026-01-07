@@ -327,16 +327,16 @@ export class TaskService {
 	 */
 	async getNextTask(tag?: string, skipCount?: number): Promise<Task | null> {
 		// Normalize skipCount - default to 0 (return first task) if not provided
-		let skip = skipCount ?? 0;
+		let remainingSkip = skipCount ?? 0;
 
 		// Validate skipCount - must be a non-negative number
-		if (typeof skip !== 'number' || skip < 0 || !Number.isInteger(skip)) {
+		if (typeof remainingSkip !== 'number' || remainingSkip < 0 || !Number.isInteger(remainingSkip)) {
 			throw new TaskMasterError(
 				'Invalid skipCount parameter: must be a non-negative integer',
 				ERROR_CODES.VALIDATION_ERROR,
 				{
 					parameter: 'skipCount',
-					provided: skip,
+					provided: remainingSkip,
 					expected: 'non-negative integer'
 				}
 			);
@@ -433,12 +433,13 @@ export class TaskService {
 			});
 
 			// Apply skip indexing - return task at specified index, or null if out of bounds
-			if (skip < candidateSubtasks.length) {
-				return candidateSubtasks[skip];
+			const subtaskResult = TaskService.getSkipIndex(candidateSubtasks, remainingSkip);
+			if (subtaskResult) {
+				return subtaskResult;
 			}
-			// Fallthrough: skip exceeded available subtasks
+			// Fallthrough: remainingSkip exceeded available subtasks
 			// Continue skipping from top-level tasks (skipCount is relative to combined eligible pool)
-			skip -= candidateSubtasks.length;
+			remainingSkip -= candidateSubtasks.length;
 		}
 
 		// 2) Fall back to top-level tasks (original logic)
@@ -466,12 +467,32 @@ export class TaskService {
 		});
 
 		// Apply skip indexing - return task at specified index, or null if out of bounds
-		if (skip < eligibleTasks.length) {
-			return eligibleTasks[skip];
+		const taskResult = TaskService.getSkipIndex(eligibleTasks, remainingSkip);
+		if (taskResult) {
+			return taskResult;
 		}
 
 		// Skip count exceeds available eligible tasks
 		return null;
+	}
+
+	/**
+	 * Get item from array at skip index, or null if out of bounds
+	 *
+	 * @param items - Array of items to index into
+	 * @param skip - Number of items to skip (0-indexed)
+	 * @returns Item at skip index, or null if skip exceeds array length
+	 *
+	 * @example
+	 * ```typescript
+	 * const items = ['a', 'b', 'c'];
+	 * TaskService.getSkipIndex(items, 0); // 'a'
+	 * TaskService.getSkipIndex(items, 1); // 'b'
+	 * TaskService.getSkipIndex(items, 5); // null (out of bounds)
+	 * ```
+	 */
+	private static getSkipIndex<T>(items: T[], skip: number): T | null {
+		return items[skip] ?? null;
 	}
 
 	/**
