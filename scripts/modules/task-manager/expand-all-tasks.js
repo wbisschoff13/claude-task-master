@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { getDebugFlag } from '../config-manager.js';
@@ -17,6 +19,7 @@ import expandTask from './expand-task.js';
  * @param {boolean} [useResearch=false] - Whether to use the research AI role.
  * @param {string} [additionalContext=''] - Optional additional context.
  * @param {boolean} [force=false] - Force expansion even if tasks already have subtasks.
+ * @param {number} [threshold=null] - Optional: Minimum complexity score (1-10) to include a task.
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
@@ -32,6 +35,7 @@ async function expandAllTasks(
 	useResearch = false,
 	additionalContext = '',
 	force = false, // Keep force here for the filter logic
+	threshold = null, // Minimum complexity score to include a task
 	context = {},
 	outputFormat = 'text' // Assume text default for CLI
 ) {
@@ -89,11 +93,63 @@ async function expandAllTasks(
 		}
 
 		// --- Restore Original Filtering Logic ---
-		const tasksToExpand = data.tasks.filter(
+		let tasksToExpand = data.tasks.filter(
 			(task) =>
 				(task.status === 'pending' || task.status === 'in-progress') && // Include 'in-progress'
 				(!task.subtasks || task.subtasks.length === 0 || force) // Check subtasks/force here
 		);
+
+		// --- Apply Threshold Filtering (if threshold is set) ---
+		if (threshold != null) {
+			logger.info(
+				`Threshold filter active: only including tasks with complexity score >= ${threshold}`
+			);
+			try {
+				let complexityReport = null;
+				if (complexityReportPath && fs.existsSync(complexityReportPath)) {
+					complexityReport = readJSON(complexityReportPath);
+				}
+
+				if (complexityReport?.complexityAnalysis) {
+					const analysis = complexityReport.complexityAnalysis;
+					const beforeCount = tasksToExpand.length;
+
+					// Create a Map for O(1) lookups instead of O(N) array.find()
+					const analysisMap = new Map(analysis.map((a) => [a.taskId, a]));
+
+					tasksToExpand = tasksToExpand.filter((task) => {
+						const taskAnalysis = analysisMap.get(task.id);
+						const complexityScore = taskAnalysis?.complexityScore;
+						const passesThreshold = complexityScore >= threshold;
+
+						if (!passesThreshold) {
+							logger.info(
+								`Task ${task.id} excluded: complexity score ${complexityScore} < threshold ${threshold}`
+							);
+						}
+
+						return passesThreshold;
+					});
+
+					const afterCount = tasksToExpand.length;
+					logger.info(
+						`Threshold filter: ${beforeCount} tasks → ${afterCount} tasks (${beforeCount - afterCount} excluded)`
+					);
+				} else {
+					logger.warn(
+						`Threshold specified but no complexity report found at ${complexityReportPath}. ` +
+						'Run "task-master analyze-complexity" first to enable threshold filtering. ' +
+						'Expanding all eligible tasks without threshold filtering.'
+					);
+				}
+			} catch (error) {
+				logger.warn(
+					`Error reading complexity report for threshold filtering: ${error.message}. Proceeding without threshold filter.`
+				);
+			}
+		}
+		// --- End Threshold Filtering ---
+
 		tasksToExpandCount = tasksToExpand.length; // Get the count from the filtered array
 		logger.info(`Found ${tasksToExpandCount} tasks eligible for expansion.`);
 		// --- End Restored Filtering Logic ---

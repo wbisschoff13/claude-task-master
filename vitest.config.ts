@@ -53,7 +53,7 @@ export default defineConfig({
 		},
 
 		// Test execution settings
-		testTimeout: 10000,
+		testTimeout: 5000,
 		clearMocks: true,
 		restoreMocks: true,
 		mockReset: true

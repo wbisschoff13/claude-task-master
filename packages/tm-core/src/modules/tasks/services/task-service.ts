@@ -295,8 +295,62 @@ export class TaskService {
 	/**
 	 * Get next available task to work on
 	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
+	 *
+	 * **Skip behavior:**
+	 * - `skipCount = 0` or `undefined`: Returns first eligible task (default behavior)
+	 * - `skipCount = 1`: Returns second eligible task
+	 * - `skipCount = N`: Returns (N+1)th eligible task
+	 * - `skipCount >= eligibleTasks.length`: Returns `null` (no task at that index)
+	 *
+	 * **Parent Task Hierarchy:**
+	 * - When a parent task has eligible subtasks, the ENTIRE hierarchy (parent + all subtasks)
+	 *   is treated as a SINGLE unit in the skip index.
+	 * - Example: If task 1 has subtasks 1.1, 1.2, 1.3, and task 2 exists:
+	 *   - skip=0 returns 1.1 (first subtask)
+	 *   - skip=2 returns 1.3 (last subtask)
+	 *   - skip=3 skips the ENTIRE task 1 hierarchy and returns task 2
+	 *
+	 * Skip indexing applies to the sorted eligible tasks array after all filtering,
+	 * priority sorting, and dependency resolution. The skip is applied separately:
+	 * 1. First to eligible subtasks from in-progress parents (if any exist)
+	 * 2. Parent tasks with eligible subtasks are EXCLUDED from top-level consideration
+	 * 3. If skip exceeds available subtasks, falls through to top-level tasks
+	 * 4. Returns null if skip exceeds both subtasks and top-level tasks
+	 *
+	 * @param tag - Optional tag to filter tasks
+	 * @param skipCount - Optional number of eligible tasks to skip (0-indexed, non-negative integer)
+	 * @returns The next available task at the specified index, or null if no eligible task exists
+	 * @throws {TaskMasterError} If skipCount is not a non-negative integer
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get first eligible task (default)
+	 * const task1 = await taskService.getNextTask();
+	 *
+	 * // Get second eligible task
+	 * const task2 = await taskService.getNextTask(undefined, 1);
+	 *
+	 * // Get fifth eligible task for a specific tag
+	 * const task5 = await taskService.getNextTask('my-tag', 4);
+	 * ```
 	 */
-	async getNextTask(tag?: string): Promise<Task | null> {
+	async getNextTask(tag?: string, skipCount?: number): Promise<Task | null> {
+		// Normalize skipCount - default to 0 (return first task) if not provided
+		let remainingSkip = skipCount ?? 0;
+
+		// Validate skipCount - must be a non-negative number
+		if (typeof remainingSkip !== 'number' || remainingSkip < 0 || !Number.isInteger(remainingSkip)) {
+			throw new TaskMasterError(
+				'Invalid skipCount parameter: must be a non-negative integer',
+				ERROR_CODES.VALIDATION_ERROR,
+				{
+					parameter: 'skipCount',
+					provided: remainingSkip,
+					expected: 'non-negative integer'
+				}
+			);
+		}
+
 		const result = await this.getTaskList({
 			tag,
 			filter: {
@@ -316,6 +370,22 @@ export class TaskService {
 				return maybeDotId;
 			}
 			return `${parentId}.${maybeDotId}`;
+		};
+
+		// Helper to check if a subtask is eligible (pending/in-progress with satisfied dependencies)
+		const isSubtaskEligible = (
+			subtask: import('../../../common/types/index.js').Subtask,
+			parentId: string
+		): boolean => {
+			const stStatus = (subtask.status || 'pending').toLowerCase();
+			if (stStatus !== 'pending' && stStatus !== 'in-progress') return false;
+
+			const fullDeps =
+				subtask.dependencies?.map((d) => toFullSubId(String(parentId), d)) ?? [];
+			return (
+				fullDeps.length === 0 ||
+				fullDeps.every((depId) => completedIds.has(String(depId)))
+			);
 		};
 
 		// Build completed IDs set (both tasks and subtasks)
@@ -340,30 +410,23 @@ export class TaskService {
 			.filter((t) => t.status === 'in-progress' && Array.isArray(t.subtasks))
 			.forEach((parent) => {
 				parent.subtasks!.forEach((st) => {
-					const stStatus = (st.status || 'pending').toLowerCase();
-					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
+					if (!isSubtaskEligible(st, String(parent.id))) return;
 
 					const fullDeps =
-						st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ??
-						[];
-					const depsSatisfied =
-						fullDeps.length === 0 ||
-						fullDeps.every((depId) => completedIds.has(String(depId)));
+						st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ?? [];
 
-					if (depsSatisfied) {
-						candidateSubtasks.push({
-							id: `${parent.id}.${st.id}`,
-							title: st.title || `Subtask ${st.id}`,
-							status: st.status || 'pending',
-							priority: st.priority || parent.priority || 'medium',
-							dependencies: fullDeps,
-							parentId: String(parent.id),
-							description: st.description,
-							details: st.details,
-							testStrategy: st.testStrategy,
-							subtasks: []
-						} as Task & { parentId: string });
-					}
+					candidateSubtasks.push({
+						id: `${parent.id}.${st.id}`,
+						title: st.title || `Subtask ${st.id}`,
+						status: st.status || 'pending',
+						priority: st.priority || parent.priority || 'medium',
+						dependencies: fullDeps,
+						parentId: String(parent.id),
+						description: st.description,
+						details: st.details,
+						testStrategy: st.testStrategy,
+						subtasks: []
+					} as Task & { parentId: string });
 				});
 			});
 
@@ -387,13 +450,33 @@ export class TaskService {
 				return aSub - bSub;
 			});
 
-			return candidateSubtasks[0];
+			// Apply skip indexing - return task at specified index, or null if out of bounds
+			const subtaskResult = TaskService.getSkipIndex(candidateSubtasks, remainingSkip);
+			if (subtaskResult) {
+				return subtaskResult;
+			}
+			// Fallthrough: remainingSkip exceeded available subtasks
+			// Continue skipping from top-level tasks (skipCount is relative to combined eligible pool)
+			remainingSkip -= candidateSubtasks.length;
 		}
 
 		// 2) Fall back to top-level tasks (original logic)
 		const eligibleTasks = allTasks.filter((task) => {
 			const status = (task.status || 'pending').toLowerCase();
 			if (status !== 'pending' && status !== 'in-progress') return false;
+
+			// EXCLUDE: Parent tasks that have eligible subtasks are processed separately
+			// in step 1 above, so we skip them here to avoid double-counting in the skip index
+			if (task.status === 'in-progress' && Array.isArray(task.subtasks)) {
+				// Check if this parent has any pending subtasks with satisfied dependencies
+				const hasEligibleSubtask = task.subtasks.some((st) =>
+					isSubtaskEligible(st, String(task.id))
+				);
+
+				if (hasEligibleSubtask) {
+					return false; // Exclude parent - its subtasks are already in candidateSubtasks
+				}
+			}
 
 			const deps = task.dependencies ?? [];
 			return deps.every((depId) => completedIds.has(String(depId)));
@@ -402,7 +485,7 @@ export class TaskService {
 		if (eligibleTasks.length === 0) return null;
 
 		// Sort by priority → dependency count → task ID
-		const nextTask = eligibleTasks.sort((a, b) => {
+		eligibleTasks.sort((a, b) => {
 			const pa = priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
 			const pb = priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
 			if (pb !== pa) return pb - pa;
@@ -412,9 +495,35 @@ export class TaskService {
 			if (da !== db) return da - db;
 
 			return Number(a.id) - Number(b.id);
-		})[0];
+		});
 
-		return nextTask;
+		// Apply skip indexing - return task at specified index, or null if out of bounds
+		const taskResult = TaskService.getSkipIndex(eligibleTasks, remainingSkip);
+		if (taskResult) {
+			return taskResult;
+		}
+
+		// Skip count exceeds available eligible tasks
+		return null;
+	}
+
+	/**
+	 * Get item from array at skip index, or null if out of bounds
+	 *
+	 * @param items - Array of items to index into
+	 * @param skip - Number of items to skip (0-indexed)
+	 * @returns Item at skip index, or null if skip exceeds array length
+	 *
+	 * @example
+	 * ```typescript
+	 * const items = ['a', 'b', 'c'];
+	 * TaskService.getSkipIndex(items, 0); // 'a'
+	 * TaskService.getSkipIndex(items, 1); // 'b'
+	 * TaskService.getSkipIndex(items, 5); // null (out of bounds)
+	 * ```
+	 */
+	private static getSkipIndex<T>(items: T[], skip: number): T | null {
+		return items[skip] ?? null;
 	}
 
 	/**

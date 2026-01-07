@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2026-01-06T21:03:50.656Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Add skipCount parameter to service layer",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the service layer changes into: (1) Update method signature with TypeScript types, (2) Implement skip indexing logic with array bounds checking, (3) Add input validation for skipCount parameter, (4) Ensure backward compatibility with existing calls, (5) Add comprehensive inline documentation explaining the skip behavior and edge cases.",
+			"reasoning": "This is the core business logic change that requires careful implementation. The skip indexing must integrate with existing priority sorting, dependency resolution, and tag filtering logic. Array bounds checking and null handling need thorough attention. The task scores 7/10 due to the complexity of integrating new logic into an existing, multi-factor task selection system while maintaining backward compatibility."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Update domain facade with skipCount parameter",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Create subtasks for: (1) Update the getNext method signature to accept skipCount parameter, (2) Add JSDoc documentation explaining skip behavior and use cases, (3) Verify parameter pass-through to taskService.getNextTask with proper typing.",
+			"reasoning": "This is a straightforward presentation layer update with minimal complexity. The domain layer is a thin facade that passes parameters through. Low complexity (3/10) because it's essentially a parameter pass-through with documentation. No business logic changes required."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Update CLI options interface with skip parameter",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This task is simple enough that it doesn't require expansion. It's a single, straightforward interface update that can be completed in one step.",
+			"reasoning": "Minimal complexity (2/10) - this is a simple TypeScript interface extension. Adding an optional field to an existing interface is a trivial change that takes minutes. No subtasks needed as it's a single atomic change."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Add --skip CLI option with Commander.js",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This task doesn't require expansion. It's a single Commander.js option addition following existing patterns in the codebase.",
+			"reasoning": "Low complexity (3/10) - adding a CLI option is a well-established pattern in the codebase. The task involves adding one line of code with proper help text. No expansion needed as it's a single, straightforward change."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Add CLI validation for skip parameter",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This task is straightforward validation logic that doesn't require expansion. Add validation in the existing validateOptions method.",
+			"reasoning": "Simple validation task (3/10) - adding a simple check for skip >= 0 in existing validation method. Following established error handling patterns. No expansion needed as it's a single, isolated validation addition."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Update CLI getNextTask call with skip parameter",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This is a simple parameter pass-through update that doesn't require expansion. Update the method signature and pass the skip parameter through.",
+			"reasoning": "Moderate simplicity (4/10) - parameter pass-through from CLI to domain layer. Involves updating method signature and ensuring the parameter flows correctly. Slightly more complex than tasks 3-5 due to method signature changes, but still straightforward enough to not require expansion."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Update skip logic in display text output",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This task involves display formatting which is straightforward. Add conditional logic to detect skip-exceeded scenarios and format appropriate message. No expansion needed.",
+			"reasoning": "Low-moderate complexity (4/10) - adding conditional display logic for a specific edge case. Requires understanding when skip exceeds available tasks and formatting a user-friendly message. Straightforward conditional logic following existing patterns. No expansion needed."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Add skip parameter tests for JSON output",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This task is verification-only. The JSON structure already handles null tasks correctly. Just verify that hasAnyTasks field is properly set. No expansion needed.",
+			"reasoning": "Minimal complexity (2/10) - this is primarily a verification task. The JSON output structure already supports null tasks with the hasAnyTasks field. Mostly testing to ensure existing behavior works correctly with skip parameter. No implementation changes needed."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Write comprehensive unit tests for skip logic",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Organize test implementation into: (1) Set up test fixtures and mock data for various task scenarios, (2) Implement basic skip indexing tests (skip 0, 1, N), (3) Implement boundary condition tests (skip >= available, negative edge cases), (4) Implement combination tests (skip with tags, priorities, dependencies), (5) Implement backward compatibility tests, (6) Add performance tests for large task sets.",
+			"reasoning": "High complexity (8/10) for comprehensive test coverage. Requires 12 distinct test cases covering various combinations: basic skip, tag filtering, priority sorting, dependencies, subtasks, and edge cases. Tests need proper mocking, realistic data, and coverage of the complex interaction between skip logic and existing task selection algorithms. Multiple test scenarios and edge cases justify expansion."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Write comprehensive integration tests for CLI",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down integration testing into: (1) Set up test infrastructure with temporary directories and test projects, (2) Implement basic skip functionality tests (--skip 0, 1, 2), (3) Implement combination tests (skip with --tag, --format, --silent), (4) Implement validation and error handling tests, (5) Implement edge case tests (skip exceeds available, no tasks, parallel workflow simulation).",
+			"reasoning": "High complexity (7/10) for integration testing. Requires setting up realistic test environments, creating temporary project structures, and testing the full CLI stack from command parsing through display output. Testing 12 scenarios with various option combinations, error cases, and output formats. Requires careful test fixture management and verification of exact output formatting."
+		}
+	]
+}
