@@ -152,10 +152,10 @@ export class NextCommand extends Command {
 		}
 
 		// Call tm-core to get next task, passing skip parameter
-		// options.skip is guaranteed to be a number after validation
+		// options.skip is validated and converted to number above
 		const task = await this.tmCore.tasks.getNext(
 			options.tag,
-			options.skip !== undefined ? (options.skip as number) : undefined
+			options.skip !== undefined ? options.skip as number : undefined
 		);
 
 		// Get storage type and active tag
@@ -169,22 +169,7 @@ export class NextCommand extends Command {
 
 		// Calculate count of eligible (pending) tasks that could be worked on
 		// These are tasks that getNext() could potentially return (no unmet dependencies)
-		const eligibleTasks = allTasks ? allTasks.tasks.filter(t => {
-			// Must be pending or deferred
-			if (t.status !== 'pending' && t.status !== 'deferred') {
-				return false;
-			}
-			// Must have no unmet dependencies
-			if (t.dependencies && t.dependencies.length > 0) {
-				// Check if all dependencies are done
-				const dependencyTasks = t.dependencies.map(depId =>
-					allTasks.tasks.find(depTask => depTask.id === depId)
-				).filter(Boolean);
-				return dependencyTasks.every(dep => dep.status === 'done');
-			}
-			return true;
-		}) : [];
-		const availableTaskCount = eligibleTasks.length;
+		const availableTaskCount = this.countEligibleTasks(allTasks.tasks);
 
 		return {
 			task,
@@ -192,7 +177,7 @@ export class NextCommand extends Command {
 			tag: activeTag,
 			storageType,
 			hasAnyTasks,
-			skipValue: options.skip !== undefined ? (options.skip as number) : undefined,
+			skipValue: options.skip !== undefined ? options.skip as number : undefined,
 			availableTaskCount
 		};
 	}
@@ -315,6 +300,35 @@ export class NextCommand extends Command {
 		if (this.tmCore) {
 			this.tmCore = undefined;
 		}
+	}
+
+	/**
+	 * Count tasks that are eligible to be worked on (no unmet dependencies)
+	 * These are tasks that getNext() could potentially return
+	 */
+	private countEligibleTasks(tasks: Task[]): number {
+		return tasks.filter(task => {
+			// Must be pending or deferred
+			if (task.status !== 'pending' && task.status !== 'deferred') {
+				return false;
+			}
+			// Must have no unmet dependencies
+			if (task.dependencies && task.dependencies.length > 0) {
+				return this.areAllDependenciesDone(task.dependencies, tasks);
+			}
+			return true;
+		}).length;
+	}
+
+	/**
+	 * Check if all dependency tasks are completed
+	 */
+	private areAllDependenciesDone(dependencyIds: string[], allTasks: Task[]): boolean {
+		const dependencyTasks = dependencyIds
+			.map(depId => allTasks.find(task => task.id === depId))
+			.filter((task): task is Task => task !== undefined);
+
+		return dependencyTasks.every(dep => dep.status === 'done');
 	}
 
 	/**
