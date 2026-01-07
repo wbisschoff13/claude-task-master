@@ -10959,11 +10959,12 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "complexity": 3,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Create subtasks for: (1) Update the getNext method signature to accept skipCount parameter, (2) Add JSDoc documentation explaining skip behavior and use cases, (3) Verify parameter pass-through to taskService.getNextTask with proper typing."
+        "expansionPrompt": "Create subtasks for: (1) Update the getNext method signature to accept skipCount parameter, (2) Add JSDoc documentation explaining skip behavior and use cases, (3) Verify parameter pass-through to taskService.getNextTask with proper typing.",
+        "updatedAt": "2026-01-07T06:00:53.358Z"
       },
       {
         "id": "3",
@@ -11220,9 +11221,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-06T21:20:11.056Z",
+      "lastModified": "2026-01-07T06:00:53.371Z",
       "taskCount": 10,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "werner"
       ]
