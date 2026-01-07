@@ -47,7 +47,7 @@ describe('TasksDomain', () => {
 				filePath: '/test/project/tasks.json'
 			}),
 			// Add other required methods if they exist on ConfigManager
-		} as ConfigManager;
+		} as unknown as ConfigManager;
 
 		domain = new TasksDomain(mockConfigManager);
 	});
