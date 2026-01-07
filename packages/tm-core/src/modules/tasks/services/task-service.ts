@@ -433,7 +433,7 @@ export class TaskService {
 			});
 
 			// Apply skip indexing - return task at specified index, or null if out of bounds
-			const subtaskResult = this.getSkipIndex(candidateSubtasks, remainingSkip);
+			const subtaskResult = TaskService.getSkipIndex(candidateSubtasks, remainingSkip);
 			if (subtaskResult) {
 				return subtaskResult;
 			}
@@ -467,7 +467,7 @@ export class TaskService {
 		});
 
 		// Apply skip indexing - return task at specified index, or null if out of bounds
-		const taskResult = this.getSkipIndex(eligibleTasks, remainingSkip);
+		const taskResult = TaskService.getSkipIndex(eligibleTasks, remainingSkip);
 		if (taskResult) {
 			return taskResult;
 		}
@@ -486,12 +486,12 @@ export class TaskService {
 	 * @example
 	 * ```typescript
 	 * const items = ['a', 'b', 'c'];
-	 * getSkipIndex(items, 0); // 'a'
-	 * getSkipIndex(items, 1); // 'b'
-	 * getSkipIndex(items, 5); // null (out of bounds)
+	 * TaskService.getSkipIndex(items, 0); // 'a'
+	 * TaskService.getSkipIndex(items, 1); // 'b'
+	 * TaskService.getSkipIndex(items, 5); // null (out of bounds)
 	 * ```
 	 */
-	private getSkipIndex<T>(items: T[], skip: number): T | null {
+	private static getSkipIndex<T>(items: T[], skip: number): T | null {
 		if (skip < items.length) {
 			return items[skip];
 		}

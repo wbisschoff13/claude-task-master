@@ -109,7 +109,7 @@ export class NextCommand extends Command {
 		// Validate format
 		if (options.format && !['text', 'json'].includes(options.format)) {
 			throw new TaskMasterError(
-				`Invalid format: ${options.format}. Valid formats are: text, json`,
+				`Invalid format: "${options.format}". Valid formats are: text, json`,
 				ERROR_CODES.VALIDATION_ERROR
 			);
 		}
