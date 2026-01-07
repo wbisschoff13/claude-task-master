@@ -492,10 +492,7 @@ export class TaskService {
 	 * ```
 	 */
 	private static getSkipIndex<T>(items: T[], skip: number): T | null {
-		if (skip < items.length) {
-			return items[skip];
-		}
-		return null;
+		return items[skip] ?? null;
 	}
 
 	/**
