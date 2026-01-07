@@ -41,6 +41,10 @@ export interface NextTaskResult {
 	tag: string;
 	storageType: Exclude<StorageType, 'auto'>;
 	hasAnyTasks?: boolean;
+	/** Skip value that was provided (if any) */
+	skipValue?: number;
+	/** Count of eligible tasks available to work on */
+	availableTaskCount?: number;
 }
 
 /**
@@ -163,12 +167,33 @@ export class NextCommand extends Command {
 		const allTasks = await this.tmCore.tasks.list({ tag: options.tag });
 		const hasAnyTasks = allTasks && allTasks.tasks.length > 0;
 
+		// Calculate count of eligible (pending) tasks that could be worked on
+		// These are tasks that getNext() could potentially return (no unmet dependencies)
+		const eligibleTasks = allTasks ? allTasks.tasks.filter(t => {
+			// Must be pending or deferred
+			if (t.status !== 'pending' && t.status !== 'deferred') {
+				return false;
+			}
+			// Must have no unmet dependencies
+			if (t.dependencies && t.dependencies.length > 0) {
+				// Check if all dependencies are done
+				const dependencyTasks = t.dependencies.map(depId =>
+					allTasks.tasks.find(depTask => depTask.id === depId)
+				).filter(Boolean);
+				return dependencyTasks.every(dep => dep.status === 'done');
+			}
+			return true;
+		}) : [];
+		const availableTaskCount = eligibleTasks.length;
+
 		return {
 			task,
 			found: task !== null,
 			tag: activeTag,
 			storageType,
-			hasAnyTasks
+			hasAnyTasks,
+			skipValue: options.skip !== undefined ? (options.skip as number) : undefined,
+			availableTaskCount
 		};
 	}
 
@@ -211,6 +236,23 @@ export class NextCommand extends Command {
 		});
 
 		if (!result.found || !result.task) {
+			// Check if skip value exceeded available tasks
+			const skipValue = result.skipValue;
+			const availableCount = result.availableTaskCount ?? 0;
+
+			if (skipValue !== undefined && skipValue >= availableCount && availableCount > 0) {
+				// Skip was provided and exceeded available eligible tasks
+				console.log(
+					chalk.yellow(
+						`✓ No eligible task at skip index ${skipValue}. Only ${availableCount} task${availableCount === 1 ? '' : 's'} available.`
+					)
+				);
+				console.log(
+					`\n${chalk.dim('Tip: Try')} ${chalk.cyan(`task-master next --skip=${availableCount - 1}`)} ${chalk.dim('to get the last available task')}`
+				);
+				return;
+			}
+
 			// Only show warning box if there are literally NO tasks at all
 			if (!result.hasAnyTasks) {
 				console.log(
