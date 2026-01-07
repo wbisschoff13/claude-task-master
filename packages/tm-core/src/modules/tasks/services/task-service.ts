@@ -436,7 +436,8 @@ export class TaskService {
 			if (skip < candidateSubtasks.length) {
 				return candidateSubtasks[skip];
 			}
-			// Adjust skip count for the next stage since we've skipped all available subtasks
+			// Fallthrough: skip exceeded available subtasks
+			// Continue skipping from top-level tasks (skipCount is relative to combined eligible pool)
 			skip -= candidateSubtasks.length;
 		}
 
