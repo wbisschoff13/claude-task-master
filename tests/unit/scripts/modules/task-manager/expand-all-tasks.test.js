@@ -2,6 +2,7 @@
  * Tests for the expand-all-tasks.js module
  */
 import { jest } from '@jest/globals';
+import fs from 'fs';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule(
@@ -140,6 +141,7 @@ describe('expandAllTasks', () => {
 				false, // useResearch
 				'test context', // additionalContext
 				false, // force
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -195,6 +197,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				true, // force = true
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -222,6 +225,7 @@ describe('expandAllTasks', () => {
 				true, // useResearch = true
 				'research context',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -259,6 +263,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -313,6 +318,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false, // force = false, so task with subtasks won't be expanded
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -347,6 +353,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -434,6 +441,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -463,6 +471,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -527,6 +536,7 @@ describe('expandAllTasks', () => {
 				false,
 				'',
 				false,
+				null, // threshold
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
@@ -553,6 +563,260 @@ describe('expandAllTasks', () => {
 				}),
 				false
 			);
+		});
+	});
+
+	describe('threshold filtering', () => {
+		test('should filter tasks by complexity score when threshold is provided', async () => {
+			// Arrange
+			const mockComplexityReportPath =
+				'/test/project/.taskmaster/reports/task-complexity-report.json';
+			const complexityReport = {
+				complexityAnalysis: [
+					{ taskId: 1, complexityScore: 8 },
+					{ taskId: 2, complexityScore: 5 },
+					{ taskId: 4, complexityScore: 3 }
+				]
+			};
+
+			// Mock fs.existsSync to return true for this test
+			const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+			// Set up mock to return different values based on path
+			mockReadJSON.mockImplementation((path) => {
+				if (path === mockComplexityReportPath) {
+					return complexityReport;
+				}
+				return sampleTasksData;
+			});
+
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act - expand only tasks with complexity >= 6
+			const result = await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				6, // threshold
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				},
+				'json'
+			);
+
+			// Assert - only task 1 (score 8) should be expanded, task 2 (score 5) is below threshold
+			expect(result.expandedCount).toBe(1);
+			expect(mockExpandTask).toHaveBeenCalledTimes(1);
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				1, // only task 1 qualifies
+				3,
+				false,
+				'',
+				expect.objectContaining({
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				}),
+				false
+			);
+
+			// Verify logger was called with threshold info
+			expect(mockMcpLog.info).toHaveBeenCalledWith(
+				expect.stringContaining('Threshold filter active: only including tasks with complexity score >= 6')
+			);
+
+			// Cleanup
+			existsSyncSpy.mockRestore();
+		});
+
+		test('should expand all eligible tasks when threshold is not specified', async () => {
+			// Arrange
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+			// Ensure readJSON returns tasks data
+			mockReadJSON.mockReturnValue(sampleTasksData);
+
+			// Act - no threshold specified
+			const result = await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				null, // no threshold
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master'
+				},
+				'json'
+			);
+
+			// Assert - all eligible tasks should be expanded (tasks 1 and 2)
+			expect(result.expandedCount).toBe(2);
+			expect(mockExpandTask).toHaveBeenCalledTimes(2);
+		});
+
+		test('should handle missing complexity report gracefully when threshold is set', async () => {
+			// Arrange
+			const mockComplexityReportPath =
+				'/test/project/.taskmaster/reports/task-complexity-report.json';
+
+			// Set up mock to return tasks data for any path
+			mockReadJSON.mockReturnValue(sampleTasksData);
+
+			// Mock fs.existsSync to return false (override default)
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act - threshold set but no complexity report
+			const result = await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				6, // threshold
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				},
+				'json'
+			);
+
+			// Assert - should expand all eligible tasks (threshold ignored)
+			expect(result.expandedCount).toBe(2);
+			expect(mockExpandTask).toHaveBeenCalledTimes(2);
+
+			// Verify warning was logged
+			expect(mockMcpLog.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Threshold specified but no complexity report found')
+			);
+		});
+
+		test('should expand no tasks when all tasks are below threshold', async () => {
+			// Arrange
+			const mockComplexityReportPath =
+				'/test/project/.taskmaster/reports/task-complexity-report.json';
+			const complexityReport = {
+				complexityAnalysis: [
+					{ taskId: 1, complexityScore: 2 },
+					{ taskId: 2, complexityScore: 3 },
+					{ taskId: 4, complexityScore: 1 }
+				]
+			};
+
+			// Mock fs.existsSync to return true
+			const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Set up mock to return different values based on path
+			mockReadJSON.mockImplementation((path) => {
+				if (path === mockComplexityReportPath) {
+					return complexityReport;
+				}
+				return sampleTasksData;
+			});
+
+			// Act - expand only tasks with complexity >= 5
+			const result = await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				5, // threshold
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				},
+				'json'
+			);
+
+			// Assert - no tasks should be expanded
+			expect(result.expandedCount).toBe(0);
+			expect(result.tasksToExpand).toBe(0);
+			expect(mockExpandTask).not.toHaveBeenCalled();
+
+			// Cleanup
+			existsSyncSpy.mockRestore();
+		});
+
+		test('should handle threshold of zero correctly', async () => {
+			// Arrange
+			const mockComplexityReportPath =
+				'/test/project/.taskmaster/reports/task-complexity-report.json';
+			const complexityReport = {
+				complexityAnalysis: [
+					{ taskId: 1, complexityScore: 5 },
+					{ taskId: 2, complexityScore: 3 }
+				]
+			};
+
+			// Mock fs.existsSync to return true
+			const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Set up mock to return different values based on path
+			mockReadJSON.mockImplementation((path) => {
+				if (path === mockComplexityReportPath) {
+					return complexityReport;
+				}
+				return sampleTasksData;
+			});
+
+			// Act - threshold of 0 should expand all tasks (all scores >= 0)
+			const result = await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				0, // threshold of 0
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				},
+				'json'
+			);
+
+			// Assert - all tasks should pass threshold (scores 5 and 3 are both >= 0)
+			expect(result.expandedCount).toBe(2);
+			expect(mockExpandTask).toHaveBeenCalledTimes(2);
+
+			// Cleanup
+			existsSyncSpy.mockRestore();
 		});
 	});
 });

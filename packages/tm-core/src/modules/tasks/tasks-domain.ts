@@ -149,9 +149,29 @@ export class TasksDomain {
 
 	/**
 	 * Get next available task to work on
+	 *
+	 * @param tag - Optional tag to filter tasks
+	 * @param skipCount - Number of eligible tasks to skip (default: 0)
+	 *   - 0 returns the first eligible task
+	 *   - 1 skips the first eligible task and returns the second
+	 *   - Useful for skipping tasks that were previously attempted
+	 *
+	 * @returns The next available task or null if no tasks match
+	 *
+	 * @example
+	 * ```typescript
+	 * // Get first eligible task
+	 * const task1 = await tasks.getNext();
+	 *
+	 * // Get second eligible task (skip first)
+	 * const task2 = await tasks.getNext(undefined, 1);
+	 *
+	 * // Get third eligible task for a specific tag
+	 * const task3 = await tasks.getNext('my-tag', 2);
+	 * ```
 	 */
-	async getNext(tag?: string): Promise<Task | null> {
-		return this.taskService.getNextTask(tag);
+	async getNext(tag?: string, skipCount?: number): Promise<Task | null> {
+		return this.taskService.getNextTask(tag, skipCount);
 	}
 
 	/**
