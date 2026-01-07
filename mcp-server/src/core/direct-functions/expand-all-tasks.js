@@ -18,6 +18,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.research] - Enable research-backed subtask generation
  * @param {string} [args.prompt] - Additional context to guide subtask generation
  * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
+ * @param {number} [args.threshold] - Minimum complexity score (1-10) to include a task
  * @param {string} [args.projectRoot] - Project root path.
  * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object from FastMCP
@@ -33,6 +34,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		research,
 		prompt,
 		force,
+		threshold,
 		projectRoot,
 		tag,
 		complexityReportPath: providedComplexityReportPath
@@ -64,7 +66,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 	enableSilentMode(); // Enable silent mode for the core function call
 	try {
 		log.info(
-			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, projectRoot, tag })}`
+			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, threshold, projectRoot, tag })}`
 		);
 
 		// Parse parameters (ensure correct types)
@@ -72,6 +74,11 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const useResearch = research === true;
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
+		let thresholdValue = threshold !== undefined ? parseInt(threshold, 10) : null;
+		if (thresholdValue !== null && (thresholdValue < 1 || thresholdValue > 10)) {
+			log.warn(`Threshold ${thresholdValue} is outside valid range (1-10). Ignoring threshold filter.`);
+			thresholdValue = null;
+		}
 
 		// Call the core function, passing options and the context object { session, mcpLog, projectRoot, tag, complexityReportPath }
 		const result = await expandAllTasks(
@@ -80,6 +87,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			useResearch,
 			additionalContext,
 			forceFlag,
+			thresholdValue,
 			{ session, mcpLog, projectRoot, tag, complexityReportPath },
 			'json'
 		);

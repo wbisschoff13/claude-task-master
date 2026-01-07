@@ -1849,6 +1849,11 @@ function registerCommands(programInstance) {
 			// Removed default value to allow tag-specific auto-detection
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option(
+			'-t, --threshold <number>',
+			'Minimum complexity score (1-10) for expand --all to include a task (requires complexity report)',
+			parseInt
+		)
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const initOptions = {
@@ -1878,6 +1883,7 @@ function registerCommands(programInstance) {
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
 						options.force, // Pass force flag
+						options.threshold, // Pass threshold for complexity filtering
 						{
 							projectRoot: taskMaster.getProjectRoot(),
 							tag,

@@ -6,8 +6,8 @@ import rootConfig from '../../vitest.config';
  * Extends root config with CLI-specific settings
  *
  * Integration tests (.test.ts) spawn CLI processes and need more time.
- * The 30s timeout is reasonable now that auto-update network calls are skipped
- * when TASKMASTER_SKIP_AUTO_UPDATE=1 or NODE_ENV=test.
+ * Parallel workflow tests require additional time for multiple CLI invocations.
+ * Individual slow tests can have specific timeouts if needed.
  */
 export default mergeConfig(
 	rootConfig,
@@ -20,9 +20,10 @@ export default mergeConfig(
 				'src/**/*.test.ts',
 				'src/**/*.spec.ts'
 			],
-			// Integration tests spawn CLI processes - 30s is reasonable with optimized startup
-			testTimeout: 30000,
-			hookTimeout: 15000
+			// Integration tests spawn CLI processes - 10s default
+			// Slow tests can override with specific timeouts
+			testTimeout: 10000,
+			hookTimeout: 10000
 		}
 	})
 );

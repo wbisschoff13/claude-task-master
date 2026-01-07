@@ -50,6 +50,12 @@ export function registerExpandAllTool(server) {
 				.describe(
 					'Force regeneration of subtasks for tasks that already have them'
 				),
+			threshold: z
+				.number()
+				.optional()
+				.describe(
+					'Minimum complexity score (1-10) for expand --all to include a task (requires complexity report)'
+				),
 			file: z
 				.string()
 				.optional()
@@ -107,6 +113,7 @@ export function registerExpandAllTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
+						threshold: args.threshold,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag,
 						complexityReportPath
