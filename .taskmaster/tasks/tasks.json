@@ -10993,11 +10993,12 @@
         "dependencies": [
           "3"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "complexity": 3,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "This task doesn't require expansion. It's a single Commander.js option addition following existing patterns in the codebase."
+        "expansionPrompt": "This task doesn't require expansion. It's a single Commander.js option addition following existing patterns in the codebase.",
+        "updatedAt": "2026-01-07T09:59:32.406Z"
       },
       {
         "id": "5",
@@ -11222,9 +11223,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T08:05:54.584Z",
+      "lastModified": "2026-01-07T09:59:32.411Z",
       "taskCount": 10,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "werner"
       ]
