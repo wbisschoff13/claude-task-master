@@ -431,22 +431,13 @@ describe('next command', () => {
 				expect(() => parseJsonOutput(output)).not.toThrow();
 			});
 
-			it('should include all required fields in JSON output', () => {
-				const { output } = runNext('--format json');
+			it.each([
+				{ description: 'without skip', args: '--format json' },
+				{ description: 'with skip', args: '--skip 1 --format json' }
+			])('should include all required fields in JSON output $description', ({ args }) => {
+				const { output } = runNext(args);
 				const json = parseJsonOutput(output);
 
-				expect(json).toHaveProperty('task');
-				expect(json).toHaveProperty('found');
-				expect(json).toHaveProperty('tag');
-				expect(json).toHaveProperty('storageType');
-				expect(json).toHaveProperty('hasAnyTasks');
-			});
-
-			it('should maintain JSON structure when skip parameter is used', () => {
-				const { output } = runNext('--skip 1 --format json');
-				const json = parseJsonOutput(output);
-
-				// Verify structure is unchanged
 				expect(json).toHaveProperty('task');
 				expect(json).toHaveProperty('found');
 				expect(json).toHaveProperty('tag');
@@ -489,9 +480,11 @@ describe('next command', () => {
 				const jsonWithSkip = parseJsonOutput(outputWithSkip);
 				const jsonWithoutSkip = parseJsonOutput(outputWithoutSkip);
 
-				// Task should be the same (first task)
-				expect(jsonWithSkip.task.id).toBe(jsonWithoutSkip.task.id);
-				expect(jsonWithSkip.skipValue).toBe(0);
+				// All fields should be identical except skipValue
+				expect(jsonWithSkip).toEqual({
+					...jsonWithoutSkip,
+					skipValue: 0
+				});
 			});
 
 			it('should include skipValue=0 in JSON output', () => {
