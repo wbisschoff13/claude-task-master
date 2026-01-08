@@ -41,6 +41,10 @@ export interface NextTaskResult {
 	tag: string;
 	storageType: Exclude<StorageType, 'auto'>;
 	hasAnyTasks?: boolean;
+	/** Skip value that was provided (if any) */
+	skipValue?: number;
+	/** Count of eligible tasks available to work on */
+	availableTaskCount?: number;
 }
 
 /**
@@ -148,10 +152,10 @@ export class NextCommand extends Command {
 		}
 
 		// Call tm-core to get next task, passing skip parameter
-		// options.skip is guaranteed to be a number after validation
+		// options.skip is validated and converted to number above
 		const task = await this.tmCore.tasks.getNext(
 			options.tag,
-			options.skip !== undefined ? (options.skip as number) : undefined
+			options.skip !== undefined ? options.skip as number : undefined
 		);
 
 		// Get storage type and active tag
@@ -163,12 +167,18 @@ export class NextCommand extends Command {
 		const allTasks = await this.tmCore.tasks.list({ tag: options.tag });
 		const hasAnyTasks = allTasks && allTasks.tasks.length > 0;
 
+		// Calculate count of eligible (pending) tasks that could be worked on
+		// These are tasks that getNext() could potentially return (no unmet dependencies)
+		const availableTaskCount = this.countEligibleTasks(allTasks.tasks);
+
 		return {
 			task,
 			found: task !== null,
 			tag: activeTag,
 			storageType,
-			hasAnyTasks
+			hasAnyTasks,
+			skipValue: options.skip !== undefined ? options.skip as number : undefined,
+			availableTaskCount
 		};
 	}
 
@@ -211,6 +221,23 @@ export class NextCommand extends Command {
 		});
 
 		if (!result.found || !result.task) {
+			// Check if skip value exceeded available tasks
+			const skipValue = result.skipValue;
+			const availableCount = result.availableTaskCount ?? 0;
+
+			if (skipValue !== undefined && skipValue >= availableCount && availableCount > 0) {
+				// Skip was provided and exceeded available eligible tasks
+				console.log(
+					chalk.yellow(
+						`✓ No eligible task at skip index ${skipValue}. Only ${availableCount} task${availableCount === 1 ? '' : 's'} available.`
+					)
+				);
+				console.log(
+					`\n${chalk.dim('Tip: Try')} ${chalk.cyan(`task-master next --skip=${availableCount - 1}`)} ${chalk.dim('to get the last available task')}`
+				);
+				return;
+			}
+
 			// Only show warning box if there are literally NO tasks at all
 			if (!result.hasAnyTasks) {
 				console.log(
@@ -273,6 +300,39 @@ export class NextCommand extends Command {
 		if (this.tmCore) {
 			this.tmCore = undefined;
 		}
+	}
+
+	/**
+	 * Count tasks that are eligible to be worked on (no unmet dependencies)
+	 * These are tasks that getNext() could potentially return
+	 */
+	private countEligibleTasks(tasks: Task[]): number {
+		const taskMap = new Map<string, Task>(tasks.map(task => [String(task.id), task]));
+		return tasks.filter(task => {
+			// Must be pending or deferred
+			if (task.status !== 'pending' && task.status !== 'deferred') {
+				return false;
+			}
+			// Must have no unmet dependencies
+			if (task.dependencies && task.dependencies.length > 0) {
+				return this.areAllDependenciesDone(task.dependencies, taskMap);
+			}
+			return true;
+		}).length;
+	}
+
+	/**
+	 * Check if all dependency tasks are completed
+	 */
+	private areAllDependenciesDone(dependencyIds: string[], taskMap: Map<string, Task>): boolean {
+		// This is more efficient than mapping and finding for each dependency.
+		// It also correctly handles cases where a dependency ID might not exist in the task list.
+		return dependencyIds.every(depId => {
+			const depTask = taskMap.get(String(depId));
+			// A dependency is met only if the task exists and its status is 'done'.
+			// If the task doesn't exist (depTask is undefined), the dependency is not met.
+			return depTask?.status === 'done';
+		});
 	}
 
 	/**
