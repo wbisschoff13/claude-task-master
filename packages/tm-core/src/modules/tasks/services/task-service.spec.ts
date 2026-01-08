@@ -48,6 +48,8 @@ describe('TaskService - Skip Logic', () => {
 		initialize: vi.fn().mockResolvedValue(undefined),
 		loadTasks: vi.fn().mockResolvedValue(tasks),
 		loadTask: vi.fn().mockResolvedValue(tasks[0] ?? null),
+		saveTasks: vi.fn().mockResolvedValue(undefined),
+		appendTasks: vi.fn().mockResolvedValue(undefined),
 		updateTask: vi.fn().mockResolvedValue(undefined),
 		updateTaskWithPrompt: vi.fn().mockResolvedValue(undefined),
 		updateTaskStatus: vi.fn().mockResolvedValue({
@@ -57,10 +59,33 @@ describe('TaskService - Skip Logic', () => {
 			taskId: '1'
 		}),
 		expandTaskWithPrompt: vi.fn().mockResolvedValue(undefined),
-		getTagsWithStats: vi.fn().mockResolvedValue([]),
+		deleteTask: vi.fn().mockResolvedValue(undefined),
+		exists: vi.fn().mockResolvedValue(true),
+		loadMetadata: vi.fn().mockResolvedValue(null),
+		saveMetadata: vi.fn().mockResolvedValue(undefined),
+		getAllTags: vi.fn().mockResolvedValue([]),
+		createTag: vi.fn().mockResolvedValue(undefined),
+		deleteTag: vi.fn().mockResolvedValue(undefined),
+		renameTag: vi.fn().mockResolvedValue(undefined),
+		copyTag: vi.fn().mockResolvedValue(undefined),
+		getStats: vi.fn().mockResolvedValue({
+			totalTasks: tasks.length,
+			totalTags: 1,
+			storageSize: 1024,
+			lastModified: new Date().toISOString(),
+			tagStats: []
+		}),
+		getTagsWithStats: vi.fn().mockResolvedValue({
+			tags: [],
+			currentTag: 'master',
+			totalTags: 1
+		}),
+		watch: vi.fn().mockResolvedValue({
+			unsubscribe: vi.fn()
+		}),
 		close: vi.fn().mockResolvedValue(undefined),
 		getStorageType: vi.fn().mockReturnValue('file'),
-		getCurrentBriefName: vi.fn().mockReturnValue(undefined)
+		getCurrentBriefName: vi.fn().mockReturnValue(null)
 	});
 
 	beforeEach(async () => {
@@ -353,8 +378,28 @@ describe('TaskService - Skip Logic', () => {
 					status: 'in-progress',
 					priority: 'medium',
 					subtasks: [
-						{ id: '1', title: 'Subtask 1.1', status: 'pending', priority: 'high' },
-						{ id: '2', title: 'Subtask 1.2', status: 'pending', priority: 'medium' }
+						{
+							id: '1',
+							parentId: '1',
+							title: 'Subtask 1.1',
+							description: 'Test',
+							details: 'Test',
+							testStrategy: 'Test',
+							status: 'pending',
+							priority: 'high',
+							dependencies: []
+						},
+						{
+							id: '2',
+							parentId: '1',
+							title: 'Subtask 1.2',
+							description: 'Test',
+							details: 'Test',
+							testStrategy: 'Test',
+							status: 'pending',
+							priority: 'medium',
+							dependencies: []
+						}
 					]
 				}),
 				createMockTask({ id: '2', status: 'pending', priority: 'high' })
