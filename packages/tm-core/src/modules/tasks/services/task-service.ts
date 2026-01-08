@@ -302,11 +302,20 @@ export class TaskService {
 	 * - `skipCount = N`: Returns (N+1)th eligible task
 	 * - `skipCount >= eligibleTasks.length`: Returns `null` (no task at that index)
 	 *
+	 * **Parent Task Hierarchy:**
+	 * - When a parent task has eligible subtasks, the ENTIRE hierarchy (parent + all subtasks)
+	 *   is treated as a SINGLE unit in the skip index.
+	 * - Example: If task 1 has subtasks 1.1, 1.2, 1.3, and task 2 exists:
+	 *   - skip=0 returns 1.1 (first subtask)
+	 *   - skip=2 returns 1.3 (last subtask)
+	 *   - skip=3 skips the ENTIRE task 1 hierarchy and returns task 2
+	 *
 	 * Skip indexing applies to the sorted eligible tasks array after all filtering,
 	 * priority sorting, and dependency resolution. The skip is applied separately:
 	 * 1. First to eligible subtasks from in-progress parents (if any exist)
-	 * 2. If skip exceeds available subtasks, falls through to top-level tasks
-	 * 3. Returns null if skip exceeds both subtasks and top-level tasks
+	 * 2. Parent tasks with eligible subtasks are EXCLUDED from top-level consideration
+	 * 3. If skip exceeds available subtasks, falls through to top-level tasks
+	 * 4. Returns null if skip exceeds both subtasks and top-level tasks
 	 *
 	 * @param tag - Optional tag to filter tasks
 	 * @param skipCount - Optional number of eligible tasks to skip (0-indexed, non-negative integer)
@@ -446,6 +455,28 @@ export class TaskService {
 		const eligibleTasks = allTasks.filter((task) => {
 			const status = (task.status || 'pending').toLowerCase();
 			if (status !== 'pending' && status !== 'in-progress') return false;
+
+			// EXCLUDE: Parent tasks that have eligible subtasks are processed separately
+			// in step 1 above, so we skip them here to avoid double-counting in the skip index
+			if (task.status === 'in-progress' && Array.isArray(task.subtasks)) {
+				// Check if this parent has any pending subtasks with satisfied dependencies
+				const hasEligibleSubtask = task.subtasks.some((st) => {
+					const stStatus = (st.status || 'pending').toLowerCase();
+					if (stStatus !== 'pending' && stStatus !== 'in-progress') return false;
+
+					const fullDeps =
+						st.dependencies?.map((d) => toFullSubId(String(task.id), d)) ?? [];
+					const depsSatisfied =
+						fullDeps.length === 0 ||
+						fullDeps.every((depId) => completedIds.has(String(depId)));
+
+					return depsSatisfied;
+				});
+
+				if (hasEligibleSubtask) {
+					return false; // Exclude parent - its subtasks are already in candidateSubtasks
+				}
+			}
 
 			const deps = task.dependencies ?? [];
 			return deps.every((depId) => completedIds.has(String(depId)));
