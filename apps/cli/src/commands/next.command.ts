@@ -307,6 +307,7 @@ export class NextCommand extends Command {
 	 * These are tasks that getNext() could potentially return
 	 */
 	private countEligibleTasks(tasks: Task[]): number {
+		const taskMap = new Map<string, Task>(tasks.map(task => [String(task.id), task]));
 		return tasks.filter(task => {
 			// Must be pending or deferred
 			if (task.status !== 'pending' && task.status !== 'deferred') {
@@ -314,7 +315,7 @@ export class NextCommand extends Command {
 			}
 			// Must have no unmet dependencies
 			if (task.dependencies && task.dependencies.length > 0) {
-				return this.areAllDependenciesDone(task.dependencies, tasks);
+				return this.areAllDependenciesDone(task.dependencies, taskMap);
 			}
 			return true;
 		}).length;
@@ -323,12 +324,15 @@ export class NextCommand extends Command {
 	/**
 	 * Check if all dependency tasks are completed
 	 */
-	private areAllDependenciesDone(dependencyIds: string[], allTasks: Task[]): boolean {
-		const dependencyTasks = dependencyIds
-			.map(depId => allTasks.find(task => task.id === depId))
-			.filter((task): task is Task => task !== undefined);
-
-		return dependencyTasks.every(dep => dep.status === 'done');
+	private areAllDependenciesDone(dependencyIds: string[], taskMap: Map<string, Task>): boolean {
+		// This is more efficient than mapping and finding for each dependency.
+		// It also correctly handles cases where a dependency ID might not exist in the task list.
+		return dependencyIds.every(depId => {
+			const depTask = taskMap.get(String(depId));
+			// A dependency is met only if the task exists and its status is 'done'.
+			// If the task doesn't exist (depTask is undefined), the dependency is not met.
+			return depTask?.status === 'done';
+		});
 	}
 
 	/**
