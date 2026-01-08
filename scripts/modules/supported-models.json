@@ -1044,6 +1044,17 @@
 	],
 	"zai": [
 		{
+			"id": "glm-4.7",
+			"swe_score": 0.74,
+			"cost_per_1m_tokens": {
+				"input": 0.6,
+				"output": 2.2
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
+		{
 			"id": "glm-4.6",
 			"swe_score": 0.68,
 			"cost_per_1m_tokens": {
@@ -1078,6 +1089,17 @@
 		}
 	],
 	"zai-coding": [
+		{
+			"id": "glm-4.7",
+			"swe_score": 0.74,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
 		{
 			"id": "glm-4.6",
 			"swe_score": 0.68,
