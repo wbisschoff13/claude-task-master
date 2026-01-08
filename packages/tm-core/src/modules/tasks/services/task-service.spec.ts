@@ -710,27 +710,20 @@ describe('TaskService - Skip Logic', () => {
 			const tasks = [createMockTask({ id: '1' })];
 			mockStorage.loadTasks = vi.fn().mockResolvedValue(tasks);
 
-			try {
-				await service.getNextTask('master', -1);
-				expect.fail('Should have thrown TaskMasterError');
-			} catch (error) {
-				expect(error).toBeInstanceOf(TaskMasterError);
-				expect((error as TaskMasterError).code).toBe(ERROR_CODES.VALIDATION_ERROR);
-			}
+			await expect(service.getNextTask('master', -1)).rejects.toHaveProperty(
+				'code',
+				ERROR_CODES.VALIDATION_ERROR
+			);
 		});
 
 		it('should include skipCount value in error details', async () => {
 			const tasks = [createMockTask({ id: '1' })];
 			mockStorage.loadTasks = vi.fn().mockResolvedValue(tasks);
 
-			try {
-				await service.getNextTask('master', -5);
-				expect.fail('Should have thrown TaskMasterError');
-			} catch (error) {
-				expect(error).toBeInstanceOf(TaskMasterError);
-				const taskError = error as TaskMasterError;
-				expect(taskError.context?.provided).toBe(-5);
-			}
+			await expect(service.getNextTask('master', -5)).rejects.toHaveProperty(
+				'context.provided',
+				-5
+			);
 		});
 	});
 
