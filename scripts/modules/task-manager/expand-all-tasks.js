@@ -100,7 +100,7 @@ async function expandAllTasks(
 		);
 
 		// --- Apply Threshold Filtering (if threshold is set) ---
-		if (threshold !== null && threshold !== undefined) {
+		if (threshold != null) {
 			logger.info(
 				`Threshold filter active: only including tasks with complexity score >= ${threshold}`
 			);
@@ -114,8 +114,11 @@ async function expandAllTasks(
 					const analysis = complexityReport.complexityAnalysis;
 					const beforeCount = tasksToExpand.length;
 
+					// Create a Map for O(1) lookups instead of O(N) array.find()
+					const analysisMap = new Map(analysis.map((a) => [a.taskId, a]));
+
 					tasksToExpand = tasksToExpand.filter((task) => {
-						const taskAnalysis = analysis.find((a) => a.taskId === task.id);
+						const taskAnalysis = analysisMap.get(task.id);
 						const complexityScore = taskAnalysis?.complexityScore;
 						const passesThreshold = complexityScore >= threshold;
 

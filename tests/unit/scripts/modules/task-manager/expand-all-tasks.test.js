@@ -726,7 +726,7 @@ describe('expandAllTasks', () => {
 			};
 
 			// Mock fs.existsSync to return true
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 
 			mockExpandTask.mockResolvedValue({
 				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
@@ -762,6 +762,9 @@ describe('expandAllTasks', () => {
 			expect(result.expandedCount).toBe(0);
 			expect(result.tasksToExpand).toBe(0);
 			expect(mockExpandTask).not.toHaveBeenCalled();
+
+			// Cleanup
+			existsSyncSpy.mockRestore();
 		});
 
 		test('should handle threshold of zero correctly', async () => {
@@ -776,7 +779,7 @@ describe('expandAllTasks', () => {
 			};
 
 			// Mock fs.existsSync to return true
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 
 			mockExpandTask.mockResolvedValue({
 				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
@@ -811,6 +814,9 @@ describe('expandAllTasks', () => {
 			// Assert - all tasks should pass threshold (scores 5 and 3 are both >= 0)
 			expect(result.expandedCount).toBe(2);
 			expect(mockExpandTask).toHaveBeenCalledTimes(2);
+
+			// Cleanup
+			existsSyncSpy.mockRestore();
 		});
 	});
 });
