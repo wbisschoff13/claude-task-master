@@ -1,4 +1,4 @@
-# Available Models as of January 15, 2026
+# Available Models as of February 5, 2026
 
 ## Main Models
 
@@ -89,9 +89,11 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| zai         | glm-4.7                                        | 0.74      | 0.6        | 2.2         |
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
+| zai-coding  | glm-4.7                                        | 0.74      | 0          | 0           |
 | zai-coding  | glm-4.6                                        | 0.68      | 0          | 0           |
 | zai-coding  | glm-4.5                                        | 0.65      | 0          | 0           |
 | zai-coding  | glm-4.5-air                                    | 0.62      | 0          | 0           |
@@ -160,9 +162,11 @@
 | perplexity  | sonar-deep-research                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
+| zai         | glm-4.7                                      | 0.74      | 0.6        | 2.2         |
 | zai         | glm-4.6                                      | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                      | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                  | 0.62      | 0.2        | 1.1         |
+| zai-coding  | glm-4.7                                      | 0.74      | 0          | 0           |
 | zai-coding  | glm-4.6                                      | 0.68      | 0          | 0           |
 | zai-coding  | glm-4.5                                      | 0.65      | 0          | 0           |
 | zai-coding  | glm-4.5-air                                  | 0.62      | 0          | 0           |
@@ -250,9 +254,11 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| zai         | glm-4.7                                        | 0.74      | 0.6        | 2.2         |
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
+| zai-coding  | glm-4.7                                        | 0.74      | 0          | 0           |
 | zai-coding  | glm-4.6                                        | 0.68      | 0          | 0           |
 | zai-coding  | glm-4.5                                        | 0.65      | 0          | 0           |
 | zai-coding  | glm-4.5-air                                    | 0.62      | 0          | 0           |
